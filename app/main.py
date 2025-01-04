@@ -47,7 +47,6 @@ async def main() -> None:
 
     # run the programs
     service.run_program(wake_up_program)
-    return
     service.run_program(sleep_program)
 
 
