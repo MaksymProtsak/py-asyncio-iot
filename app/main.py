@@ -11,8 +11,16 @@ from iot.devices import (
     SmartSpeakerDevice,
     SmartToiletDevice
 )
-from iot.message import Message, MessageType
+from iot.message import (
+    Message,
+    MessageType
+)
 from iot.service import IOTService
+
+
+async def run_sequence(*functions: Awaitable[Any]) -> None:
+    for function in functions:
+        await function
 
 
 async def run_parallel(*functions: Awaitable[Any]) -> Tuple[Any]:
@@ -33,22 +41,39 @@ async def main() -> None:
         service.register_device(toilet),
     )
 
-    # create a few programs
-    wake_up_program = [
-        Message(hue_light_id, MessageType.SWITCH_ON),
-        Message(speaker_id, MessageType.SWITCH_ON),
-        Message(speaker_id, MessageType.PLAY_SONG, "Rick Astley - Never Gonna Give You Up"),
-    ]
-    sleep_program = [
-        Message(hue_light_id, MessageType.SWITCH_OFF),
-        Message(speaker_id, MessageType.SWITCH_OFF),
-        Message(toilet_id, MessageType.FLUSH),
-        Message(toilet_id, MessageType.CLEAN),
-    ]
+    await run_parallel(
+        service.run_program(
+            [
+                Message(hue_light_id, MessageType.SWITCH_ON),
+                Message(speaker_id, MessageType.SWITCH_ON),
+            ]
+        )
+    )
+    await run_sequence(
+        service.run_program(
+            [
+                Message(speaker_id, MessageType.PLAY_SONG, "Rick Astley - Never Gonna Give You Up")
+            ]
+        )
+    )
 
-    # run the programs
-    await service.run_program(wake_up_program)
-    service.run_program(sleep_program)
+    await run_parallel(
+        service.run_program(
+            [
+                Message(hue_light_id, MessageType.SWITCH_OFF),
+                Message(speaker_id, MessageType.SWITCH_OFF),
+                Message(toilet_id, MessageType.FLUSH),
+            ]
+        )
+    )
+
+    await run_sequence(
+        service.run_program(
+            [
+                Message(toilet_id, MessageType.CLEAN),
+            ]
+        )
+    )
 
 
 if __name__ == "__main__":
